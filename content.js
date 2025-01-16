@@ -71,11 +71,10 @@ async function handleSecondCPress() {
     console.log('Opening Claude in new tab');
     window.open('https://claude.ai/new', '_blank');
 
-    // Get the content from clipboard and send to background
-    const content = await navigator.clipboard.readText();
+    // Send the last copied content from background script
     chrome.runtime.sendMessage({
       type: 'CONTENT_COPIED',
-      content: content
+      content: lastCopiedContent  // We'll store this when copying
     });
 
   } catch (error) {
@@ -150,6 +149,9 @@ async function copyAllCells() {
       return '';
     }).filter(Boolean).join('\n\n');
 
+    // Store content before copying
+    lastCopiedContent = content;
+
     // Try the modern clipboard API first
     try {
       await navigator.clipboard.writeText(content);
@@ -157,7 +159,7 @@ async function copyAllCells() {
       // Fallback to execCommand
       const textarea = document.createElement('textarea');
       textarea.value = content;
-      textarea.style.position = 'fixed';  // Prevent scrolling to bottom
+      textarea.style.position = 'fixed';
       document.body.appendChild(textarea);
       textarea.focus();
       textarea.select();
@@ -173,6 +175,12 @@ async function copyAllCells() {
       }
     }
 
+    // Send content to background script
+    chrome.runtime.sendMessage({
+      type: 'CONTENT_COPIED',
+      content: content
+    });
+
     console.log('Content copied to clipboard');
   } catch (error) {
     console.error('Failed to copy cells:', error);
@@ -187,3 +195,6 @@ setTimeout(() => {
     init();
   }
 }, 1000);
+
+// Add this at the top with other variables
+let lastCopiedContent = '';
