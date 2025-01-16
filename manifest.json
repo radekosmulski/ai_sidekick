@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "ai_sidekick",
+  "version": "1.0",
+  "description": "Provide context from Jupyter notebooks to your AI assistant",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "clipboardWrite"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ],
+  "web_accessible_resources": [{
+    "resources": ["jupyterDetector.js"],
+    "matches": ["<all_urls>"]
+  }]
+}
