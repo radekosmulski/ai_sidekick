@@ -150,7 +150,29 @@ async function copyAllCells() {
       return '';
     }).filter(Boolean).join('\n\n');
 
-    await navigator.clipboard.writeText(content);
+    // Try the modern clipboard API first
+    try {
+      await navigator.clipboard.writeText(content);
+    } catch (clipboardError) {
+      // Fallback to execCommand
+      const textarea = document.createElement('textarea');
+      textarea.value = content;
+      textarea.style.position = 'fixed';  // Prevent scrolling to bottom
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+
+      try {
+        const successful = document.execCommand('copy');
+        if (!successful) throw new Error('execCommand copy failed');
+      } catch (execError) {
+        console.error('execCommand error:', execError);
+        throw execError;
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    }
+
     console.log('Content copied to clipboard');
   } catch (error) {
     console.error('Failed to copy cells:', error);
