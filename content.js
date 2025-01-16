@@ -132,7 +132,23 @@ async function copyAllCells() {
       else if (classicMarkdown || classicCode) {
         // Handle markdown cells
         if (classicMarkdown) {
-          return classicMarkdown.innerText;
+          let content = '';
+          const children = Array.from(classicMarkdown.children);
+
+          for (const child of children) {
+            if (child.tagName === 'PRE') {
+              // Handle code blocks
+              const code = child.querySelector('code');
+              if (code) {
+                content += '```\n' + code.textContent + '\n```\n\n';
+              }
+            } else {
+              // Handle regular text and inline code
+              content += child.textContent + '\n\n';
+            }
+          }
+
+          return content.trim();
         }
         // Handle code cells
         else if (classicCode) {
