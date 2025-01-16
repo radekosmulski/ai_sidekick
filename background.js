@@ -1,5 +1,6 @@
 // Store detected Jupyter environments
 const detectedEnvironments = new Map();
+let lastCopiedContent = '';
 
 // Handle messages from content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -18,6 +19,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'GET_JUPYTER_STATUS':
       // Return cached status for a tab
       sendResponse(detectedEnvironments.get(sender.tab.id));
+      break;
+
+    case 'CONTENT_COPIED':
+      lastCopiedContent = message.content;
+      break;
+
+    case 'GET_CONTENT':
+      sendResponse({ content: lastCopiedContent });
       break;
   }
 });

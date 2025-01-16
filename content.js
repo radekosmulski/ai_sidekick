@@ -17,20 +17,71 @@ const init = async () => {
       // Initialize your Jupyter-specific features here
       console.log('Jupyter detected:', result.methods);
 
+      // Track key state
+      let isCtrlShiftPressed = false;
+      let lastKeyPressTime = 0;
+      const KEY_TIMEOUT = 1000; // Reset after 1 second
+
       // Add keyboard shortcut listener
       document.addEventListener('keydown', (e) => {
-        // Check for Ctrl+Shift+C only (not Cmd)
-        if (e.ctrlKey && !e.metaKey && e.shiftKey && e.key === 'C') {
-          e.preventDefault(); // Prevent default browser behavior
-          console.log('Copy shortcut detected');
-          copyAllCells();
+        const currentTime = Date.now();
+
+        // Check for Ctrl+Shift being pressed
+        if (e.ctrlKey && !e.metaKey && e.shiftKey) {
+          if (e.key === 'C') {
+            e.preventDefault(); // Prevent default browser behavior
+
+            if (!isCtrlShiftPressed) {
+              // First Ctrl+Shift+C press
+              console.log('First C press detected');
+              isCtrlShiftPressed = true;
+              lastKeyPressTime = currentTime;
+              copyAllCells();
+            } else if (currentTime - lastKeyPressTime < KEY_TIMEOUT) {
+              // Subsequent C press within timeout
+              console.log('Second C press detected');
+              // TODO: Add your additional functionality here
+              handleSecondCPress();
+            }
+          }
         }
       });
+
+      // Reset state when Ctrl or Shift is released
+      document.addEventListener('keyup', (e) => {
+        if (e.key === 'Control' || e.key === 'Shift') {
+          isCtrlShiftPressed = false;
+        }
+      });
+
+      // Reset state after timeout
+      setInterval(() => {
+        if (Date.now() - lastKeyPressTime > KEY_TIMEOUT) {
+          isCtrlShiftPressed = false;
+        }
+      }, KEY_TIMEOUT);
     }
   } catch (error) {
     console.error('AI Sidekick initialization failed:', error);
   }
 };
+
+async function handleSecondCPress() {
+  try {
+    console.log('Opening Claude in new tab');
+    window.open('https://claude.ai/new', '_blank');
+
+    // Get the content from clipboard and send to background
+    const content = await navigator.clipboard.readText();
+    chrome.runtime.sendMessage({
+      type: 'CONTENT_COPIED',
+      content: content
+    });
+
+  } catch (error) {
+    console.error('Failed to handle second C press:', error);
+  }
+}
 
 async function copyAllCells() {
   try {
