@@ -87,48 +87,68 @@ async function copyAllCells() {
   try {
     console.log('Copy all cells function called');
 
-    // Find all cells (both code and markdown)
-    const cells = document.querySelectorAll('.jp-Cell');
+    // Try both modern and classic notebook cell selectors
+    const modernCells = document.querySelectorAll('.jp-Cell');
+    const classicCells = document.querySelectorAll('.cell');
+
+    // Use whichever format is present
+    const cells = modernCells.length ? modernCells : classicCells;
 
     const content = Array.from(cells).map(cell => {
-      // Get all lines from the cell
-      const lines = cell.querySelectorAll('.cm-line');
+      // For modern Jupyter
+      const modernLines = cell.querySelectorAll('.cm-line');
 
-      // Skip empty cells
-      if (!lines.length) return '';
+      // For classic Jupyter
+      const classicMarkdown = cell.querySelector('.text_cell_render');
+      const classicCode = cell.querySelector('.CodeMirror');
 
-      // Extract and join the text content of each line
-      const cellContent = Array.from(lines)
-        .map(line => {
-          // Handle empty lines
-          if (line.querySelector('br')) return '';
+      // Handle modern Jupyter format
+      if (modernLines.length) {
+        const cellContent = Array.from(modernLines)
+          .map(line => {
+            if (line.querySelector('br')) return '';
 
-          // Get all text content in order, preserving spaces
-          let lineContent = '';
-          line.childNodes.forEach(node => {
-            if (node.nodeType === Node.TEXT_NODE) {
-              lineContent += node.textContent;
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-              // Handle spans and preserve spaces between them
-              lineContent += node.textContent;
-            }
-          });
+            let lineContent = '';
+            line.childNodes.forEach(node => {
+              if (node.nodeType === Node.TEXT_NODE) {
+                lineContent += node.textContent;
+              } else if (node.nodeType === Node.ELEMENT_NODE) {
+                lineContent += node.textContent;
+              }
+            });
+            return lineContent || '';
+          })
+          .join('\n');
 
-          return lineContent || '';
-        })
-        .join('\n');
+        if (!cellContent.trim()) return '';
 
-      // Skip empty content
-      if (!cellContent.trim()) return '';
-
-      // Add language identifier for code cells
-      if (cell.classList.contains('jp-CodeCell')) {
-        return '```python\n' + cellContent + '\n```';
+        // Add language identifier for code cells
+        if (cell.classList.contains('jp-CodeCell')) {
+          return '```python\n' + cellContent + '\n```';
+        }
+        return cellContent;
       }
 
-      // Return markdown content as-is
-      return cellContent;
-    }).filter(Boolean).join('\n\n'); // Remove empty cells and join with double newlines
+      // Handle classic Jupyter format
+      else if (classicMarkdown || classicCode) {
+        // Handle markdown cells
+        if (classicMarkdown) {
+          return classicMarkdown.innerText;
+        }
+        // Handle code cells
+        else if (classicCode) {
+          const code = classicCode.querySelector('.CodeMirror-code');
+          if (code) {
+            const codeContent = code.innerText
+              .replace(/^\d+(\s|$)/gm, '') // Remove line numbers if present
+              .trim();
+            return '```python\n' + codeContent + '\n```';
+          }
+        }
+      }
+
+      return '';
+    }).filter(Boolean).join('\n\n');
 
     await navigator.clipboard.writeText(content);
     console.log('Content copied to clipboard');
